@@ -523,12 +523,24 @@ body > .footer p {}
     border-radius: 20px;
 }
 
+.divOrigin > div {
+    flex: 1;
+    display: flex;
+}
+
 .divInputs .content {
     max-width: 1200px;
     margin-inline: auto;
 }
 
-.divInputs input {font-size: 24px;padding: 14px 14px;border-radius: 14px;/* font-family: sans-serif; */flex: 1;border: none;outline: none; background-color: white; color: black; }
+.divInputs input {font-size: 24px;padding: 14px 14px;border-radius: 14px;/* font-family: sans-serif; */flex: 1;border: none;outline: none; 
+    background-color: white; color: black; 
+    line-height: 27px; }
+
+#divMap {
+    margin-top: 24px;
+}
+
 #txtDestination {
     margin-left: 0;
     border-left: 2px solid black;
