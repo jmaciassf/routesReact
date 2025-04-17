@@ -1,6 +1,9 @@
 import { GoogleMap, useJsApiLoader, StandaloneSearchBox, MarkerF } from '@react-google-maps/api'
 import { useRef, useState, useCallback, useEffect  } from "react";
-import axios from "axios";
+//import axios from "axios";
+
+//import unirest from "unirest";
+
 
 export function Welcome() {
   function quote(){
@@ -42,17 +45,43 @@ export function Welcome() {
     console.log("_markers.length: " + _markers.length);
     if(_markers.length == 2){
 
+
       let url = 
         "https://maps.googleapis.com/maps/api/distancematrix/json?units=imperial"+
         "&origins=place_id:"+_markers[0].place_id+
         "&destinations=place_id:"+_markers[1].place_id+
         "&key="+import.meta.env.VITE_GOOGLEMAPS_API_KEY;
 
+      fetch(url)
+      .then(results => results.json())
+      .then(data => {
+        
+        console.table(data);
+
+        let elements = data.rows[0].elements[0];
+        let _distance = elements.distance;
+        console.log("Elements: ");
+        console.log(elements);
+        console.log("Distance: ");
+        console.log(_distance);
+        setDistance(_distance.text);
+        setTime(elements.duration.text);
+      })
+      .catch(err => {
+        console.log(err);
+        setDistance(0);
+        setTime(0);
+      });
+      
+return;
+
+
       let config = {
         method: 'get',
         maxBodyLength: Infinity,
         url: url,
-        headers: { }
+        withCredentials: false,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       };
       
       axios.request(config)
