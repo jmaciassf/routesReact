@@ -1,5 +1,6 @@
 import { GoogleMap, useJsApiLoader, StandaloneSearchBox, MarkerF } from '@react-google-maps/api'
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect  } from "react";
+import axios from "axios";
 
 export function Welcome() {
   function quote(){
@@ -17,61 +18,116 @@ export function Welcome() {
     console.log("schedule");
   }
   
+  const [markerOrigin, setMarkerOrigin] = useState(null);
+  const [markerDestination, setMarkerDestination] = useState(null);
   const [markers, setMarkers] = useState([]);
   const refOrigin = useRef(null);
   const refDestination = useRef(null);
   const [map, setMap] = useState(null);
+  const [origin_id, setOrigin_id] = useState(null);
+  const [distance, setDistance] = useState(null);
+  const [time, setTime] = useState(null);
+
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: import.meta.env.VITE_GOOGLEMAPS_API_KEY,
     libraries: ["places"]
   })
 
-  console.log(isLoaded);
+  console.log("isLoaded: " + isLoaded);
 
-  const [origin_id, setOrigin_id] = useState(null);
-  const handleOnPlacesChanged = () => {
+  const getDirections = () => {
+    console.log("getDirections");
+
+    console.log("_markers.length: " + _markers.length);
+    if(_markers.length == 2){
+
+      let url = 
+        "https://maps.googleapis.com/maps/api/distancematrix/json?units=imperial"+
+        "&origins=place_id:"+_markers[0].place_id+
+        "&destinations=place_id:"+_markers[1].place_id+
+        "&key="+import.meta.env.VITE_GOOGLEMAPS_API_KEY;
+
+      let config = {
+        method: 'get',
+        maxBodyLength: Infinity,
+        url: url,
+        headers: { }
+      };
+      
+      axios.request(config)
+      .then((response) => {
+        console.table(response.data);
+
+        let elements = response.data.rows[0].elements[0];
+        let _distance = elements.distance;
+        console.log("Elements: ");
+        console.log(elements);
+        console.log("Distance: ");
+        console.log(_distance);
+        setDistance(_distance.text);
+        setTime(elements.duration.text);
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+
+    }
+  }
+
+  useEffect(() => {
+    console.log(`useEffect`);
+    getDirections();
+  });
+
+  const handleOnPlacesChangedOrigin = () => {
+    console.log("handleOnPlacesChangedOrigin");
     let address = refOrigin.current.getPlaces();
     console.log(address);
-    setOrigin_id(address[0].place_id);
 
-    markerOrigin = { 
-      id: 1, 
-      position: { 
-        lat: address[0].geometry.location.lat(), 
-        lng: address[0].geometry.location.lng()
-      } 
+    if(address){
+      let a = address[0];
+      console.log("Selected: " + a.formatted_address);
+      
+      setOrigin_id(a.place_id);
+
+      let jOrigin = { 
+        id: 1,
+        place_id: a.place_id,
+        position: { 
+          lat: a.geometry.location.lat(), 
+          lng: a.geometry.location.lng()
+        },
+        text: a.formatted_address
+      }
+
+      console.log("jOrigin");
+      console.log(jOrigin);
+
+      setMarkerOrigin(jOrigin);
     }
-
-    updateMarkers();
   }
 
-  
-  function updateMarkers(){
-    _markers = [];
-    if(markerOrigin)
-      _markers.push(markerOrigin);
-    if(markerDestination)
-      _markers.push(markerDestination);
-
-    setMarkers(_markers);
-    console.log(markers); 
-  }
-
-  const handleOnPlacesChanged2 = () => {
+  const handleOnPlacesChangedDestination = () => {
+    console.log("handleOnPlacesChangedDestination");
     let address = refDestination.current.getPlaces();
-    if(address)
+    if(address){
       console.log(address);    
 
-    markerDestination = { 
-      id: 2, 
-      position: { 
-        lat: address[0].geometry.location.lat(), 
-        lng: address[0].geometry.location.lng()
-      } 
-    }
+      let a = address[0];
 
-    updateMarkers();
+      let jDestination = { 
+        id: 2, 
+        place_id: a.place_id,
+        position: { 
+          lat: a.geometry.location.lat(), 
+          lng: a.geometry.location.lng()
+        },
+        text: a.formatted_address
+      }
+
+      setMarkerDestination(jDestination);
+    }
   }
 
   const containerStyle = {
@@ -84,10 +140,11 @@ export function Welcome() {
     lng: -101.285
   }
   
-  let markerOrigin; // = { id: 1, position: { lat: 24.7128, lng: -101.0060 }, name: "A" }
-  let markerDestination; // = { id: 2, position: { lat: 26.7306, lng: -102.9352 }, name: "B" }
-  var _markers = []; // = [ markerOrigin, markerDestination ];
-  //setMarkers(_markers);
+  var _markers = [];
+  if(markerOrigin)
+    _markers.push(markerOrigin);
+  if(markerDestination)
+    _markers.push(markerDestination);
 
   const onLoad = useCallback(function callback(map) {
     console.log("onLoad");
@@ -96,21 +153,12 @@ export function Welcome() {
     //const bounds = new window.google.maps.LatLngBounds(center)
     //map.fitBounds(bounds)
 
-    setMap(map)
-
-    /*
-    setTimeout(function(){
-      setMarkers(_markers);
-    }, 5000);*/
-    setMarkers(_markers);
-
+    setMap(map);
   }, [])
 
   const onUnmount = useCallback(function callback(map) {
     setMap(null)
   }, [])
-
-  
 
   return (
     <main>
@@ -132,19 +180,22 @@ export function Welcome() {
                         {isLoaded && 
                         <StandaloneSearchBox
                           onLoad={(ref) => refOrigin.current = ref}
-                          onPlacesChanged={handleOnPlacesChanged}>                        
+                          onPlacesChanged={handleOnPlacesChangedOrigin}>                        
                           <input type="text" id="txtOrigin" placeholder="Origen" />
                         </StandaloneSearchBox>
                         }
                         {isLoaded && 
                         <StandaloneSearchBox
                           onLoad={(ref) => refDestination.current = ref}
-                          onPlacesChanged={handleOnPlacesChanged2}>                        
+                          onPlacesChanged={handleOnPlacesChangedDestination}>                        
                           <input type="text" id="txtDestination" placeholder="Destino" />
                         </StandaloneSearchBox>
                         }
                     </div>
                     <input type="button" id="btnQuote" value="Cotizar" onClick={quote} />
+
+                    &nbsp;Distancia: {distance}
+                    &nbsp;Tiempo: {time}
                 </div>
                 <div className="dates">
 
@@ -165,9 +216,11 @@ export function Welcome() {
                   onUnmount={onUnmount}
                 >
                   {
+                  
                   /* Child components, such as markers, info windows, etc. */
                   // Coloca AdvancedMarkers en el mapa
-                  markers.map((marker) => (
+                  _markers.map((marker) => (
+                    //markers.map((marker) => (
                     <MarkerF key={marker.id} position={marker.position}>
                       
                     </MarkerF>
